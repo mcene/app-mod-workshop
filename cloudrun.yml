@@ -1,0 +1,77 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - '--no-cache'
+      - '-t'
+      - >-
+        europe-west8-docker.pkg.dev/alert-flames-454313-c6/cloud-run-source-deploy/$REPO_NAME/php-amarcord:$COMMIT_SHA
+      - .
+      - '-f'
+      - Dockerfile
+    id: Build docker file.
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - >-
+        europe-west8-docker.pkg.dev/alert-flames-454313-c6/cloud-run-source-deploy/$REPO_NAME/php-amarcord:$COMMIT_SHA
+    id: Push to Artifact Registry
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - deploy
+      - php-amarcord-dev
+      - '--platform=managed'
+      - '--port=80'
+      - >-
+        --image=europe-west8-docker.pkg.dev/alert-flames-454313-c6/cloud-run-source-deploy/$REPO_NAME/php-amarcord:$COMMIT_SHA
+      - '--region=europe-west8'
+      - '--quiet'
+      - '--allow-unauthenticated'
+    env:
+    - PHP_ENV=development
+    - PORT=80
+    - APP_NAME="A PHP Amarcord app deployed via Cloud Build to dev - break me as much as you want!"
+    - DEBUG="true"
+    - CODE_REPO="https://github.com/palladius/app-mod-workshop/"
+    id: Deploy to DEV version
+    entrypoint: gcloud
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+    args:
+      - run
+      - deploy
+      - php-amarcord-prod
+      - '--platform=managed'
+      - '--port=80'
+      - >-
+        --image=europe-west8-docker.pkg.dev/alert-flames-454313-c6/cloud-run-source-deploy/$REPO_NAME/php-amarcord:$COMMIT_SHA
+      - '--region=europe-west8'
+      - '--quiet'
+      - '--allow-unauthenticated'
+    env:
+    - PHP_ENV=production
+    - PORT=80
+    - APP_NAME="A PHP Amarcord app deployed via Cloud Build to PROD - please do not deploy on Fridays!"
+    - DEBUG="false"
+    - CODE_REPO="https://github.com/palladius/app-mod-workshop/"
+    id: Deploy to PROD version
+    entrypoint: gcloud
+images:
+  - >-
+    europe-west8-docker.pkg.dev/alert-flames-454313-c6/cloud-run-source-deploy/$REPO_NAME/php-amarcord:$COMMIT_SHA
+options:
+  substitutionOption: ALLOW_LOOSE
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _DEPLOY_REGION: europe-west8
+  _AR_HOSTNAME: europe-west8-docker.pkg.dev
+  _PLATFORM: managed
+  _SERVICE_NAME: php-amarcord
+  _EXECUTION_ENVIRONMENT: 'rgc/cloudbuild'
+  _GITHUB_USER: palladius
+  _DEVFEST_CITY: pescara
+  REPO_NAME: my-php-app # Replace with your actual repo name.  <--- IMPORTANT!
+tags:
+  - gcp-cloud-build-deploy-cloud-run
+  - php-amarcord
+  - ricc-ne-sa-a-tronchi
